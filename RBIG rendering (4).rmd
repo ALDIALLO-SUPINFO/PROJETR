@@ -1,0 +1,990 @@
+---
+title: "R Notebook"
+author: "CHOURI:305288-GUESMI:305466-DIALLO:293528"
+output:
+  html_notebook: default
+---
+
+######################## RBIG MINI PROJECT RENDERING #####################################
+
+ 
+ 
+# INSTALL AND LOAD PACKAGES 
+```{r}
+install.packages('dplyr')
+install.packages('ggplot2')
+install.packages('psych')
+install.packages('ggcorrplot')
+install.packages('ggworldcloud')
+install.packages('rlang')
+install.packages("GGally")
+install.packages("installr")
+install.packages('viridis')
+install.packages("caret")
+install.packages("ggpubr")
+```
+
+
+```{r}
+# install pacman("package manager") if needed
+if (!require("pacman")) install.packages("pacman")
+```
+
+#Loading Libraries
+```{r}
+library(GGally)
+library(caret)
+library(ggcorrplot)
+library(ggplot2)
+library(hrbrthemes)
+library(viridis)
+library(gridExtra)
+library(grid)
+library(Hmisc)
+library(ggpubr)
+library(rstatix)
+library(plyr)
+library(MASS)
+library(ggpubr)
+library(rstatix)
+library(ggpubr)
+library(factoextra)
+library(gridExtra)
+library(grid)
+library(cluster)
+```
+
+
+#Loading pacman libraries 
+```{r}
+pacman::p_load(pacman, party, psych, rio, tidyverse)
+```
+
+# Import Data 
+```{r}
+path <- "C:/Users/adnan/Desktop/RBIG/MP-5RBIG.xlsx"
+students_dataset <- import(path) %>%  
+  as_tibble() %>%
+  print()
+
+```
+
+#show all variables and their data type
+```{r}
+glimpse(students_dataset)
+```
+
+
+
+#1 -  Verification des valeurs NULL
+# Check fo missing values and impute them if needed.
+
+#Missing data
+```{r}
+sum(is.na(students_dataset))
+
+```
+
+# check for extra charachters using the Unique function 
+```{r}
+unique(students_dataset$schoolsup)
+unique(students_dataset$famsup)
+unique(students_dataset$paid)
+unique(students_dataset$activities)
+unique(students_dataset$nursery)
+unique(students_dataset$higher)
+unique(students_dataset$internet)
+unique(students_dataset$romantic)
+unique(students_dataset$guardian)
+unique(students_dataset$reason)
+unique(students_dataset$Fjob)
+unique(students_dataset$Mjob)
+unique(students_dataset$famsize)
+unique(students_dataset$address)
+```
+
+# 2- Add a binary categorical variable called finalResult, with level "pass" if the variable G3 is greater or equal to 10 and "fail" otherwise 
+
+```{r}
+finalResult <- students_dataset$G3
+
+students_dataset_finalresult <- students_dataset %>% 
+mutate(students_dataset, finalResult = ifelse(finalResult >= 10 , "pass", "fail"))
+
+students_dataset_finalresult
+
+```
+
+3 - Adding a  categorical variable called academicGrade, with five levels "A", "B", "C", "D", "E" depending on whether the variable G3 is between 16 and 20, 14 and 15, 12 and 13, 10 and 11, 0 and 9 (Note: don't forget this variable in the following study).
+```{r}
+
+academicGrade <- students_dataset$G3
+
+students_dataset_academic_Grade <- students_dataset_finalresult %>% mutate(students_dataset_finalresult, academicGrade = ifelse(academicGrade %in% 16:20 , "A",
+ifelse(academicGrade %in% 14:15 , "B",
+ifelse(academicGrade %in% 12:13 , "C",
+ifelse(academicGrade %in% 10:11 , "D", "E")))))
+
+students_dataset_academic_Grade
+```
+
+# data summary 
+```{r}
+summary(students_dataset)
+```
+Study of categorical variables.
+2.1 Study individually the main categorical variables (frequencies, proportions, charts, Chi-squared test of goodness of fit, etc.).
+```{r}
+df_categorial <- students_dataset[c(1,2,4,5,6,9,10,11,12,16,17,18,19,20,21,22,23)] #les nombres
+df_categorial
+```
+
+
+# SUmmary of categorical data 
+```{r}
+df_categorial %>% summary()
+```
+
+#Frequence sur le SEX
+```{r}
+
+
+students_dataset%>% select(sex)%>%
+  summary()
+
+sex_study <- df_categorial %>%
+  select(sex)%>%
+  table() %>% print() # put the data in the right format
+
+mean(sex_study)
+
+```
+# Proportions 
+```{r}
+df_sex <- table(df_categorial$sex) #pour les effectifs
+(tableSexprop <- round(prop.table(df_sex),2)) #prop : propotion
+
+```
+
+
+#Chi-squared test of goodness of fit,
+```{r}
+tchi <- chisq.test(tableSexprop)
+tchi
+
+```
+```{r}
+#Additional tables
+tchi$observed #Obsered frequencies (same as ct)
+
+tchi$residuals #Pearson's residual
+```
+
+
+```{r}
+tchi$stdres #Standardized residual 
+```
+2 - 2 Represent associations between pairs of categorical variables (Stacked bar charts, Grouped bar charts, Segmented bar charts, etc.).
+```{r}
+finalResult_by_sex %>% ggplot()+aes(x=sex,y=Fail)+geom_bar(stat="identity")
+
+```
+
+
+```{r}
+#CHARTS 
+students_dataset %>% 
+  select(reason )%>%
+  table() %>% #Put data in appropriate format
+  barplot(
+    main="Reason of choosing the school",
+    sub = "(Source: ggplot2::students data)",
+    horiz = T, #Draw horizontal bars
+    ylab="Reason", # Flip axis lables 
+    xlab = "Frequency",
+    xlim = c(0,180), #Limites for X axis
+    border = NA, #No borders on bars
+    col = "#9F79EE",
+    )
+
+```
+
+
+```{r}
+#Stacked bars : step1 : create table
+df_reason <- students_dataset %>%
+  select(Pstatus , reason)%>%
+  table() %>%
+  print()
+```
+
+
+
+```{r}
+#And now we'll create a graph 
+
+#sIDE BY SIDE bar
+df_reason %>%
+  barplot(
+    legend = rownames(.), #Dot is placeholder for pipe
+    beside = T #Put bars next to each other 
+  )
+
+#this is a really good way of looking at the association btw categorical variables and the frequencies and the various combinations that they present.
+```
+```{r}
+#Compare mean final grade in Math  of two schools
+aggregate(students_dataset[,33], students_dataset["school"], mean)
+
+```
+
+
+# 2-3 Study associations between pairs of categorical variables with Chi-squared tests.
+```{r}
+chisq.test(students_dataset$Mjob, students_dataset$Fjob, correct=FALSE)
+
+```
+
+
+# 3 - STUDY OF QUANTITATIVE VARIABLES 
+
+# 3-1 Study individually the main quantitative variables (descriptives statistics, charts, outliers, confidence intervals, relevant statistical tests, etc.).
+
+```{r}
+df_quantitative <- students_dataset[c(3,7,8,13,14,15,24,25,26,27,28,29,30,31,32,33)]
+
+```
+
+```{r}
+describe(df_quantitative)
+```
+
+
+
+Historgram of Age
+```{r}
+#Histogram  with options
+hist(students_dataset$age,
+     breaks = 8, #suggest number of breaks/ THIS has to do with the number of bars in your histogram,
+     main   = "Histogram of Age ",
+     sub    =  "(Source: ggplot2::Students data)",
+     ylab   =  "Frequency",
+     xlab   =  "Age",
+     border = NA, #No borders on bars 
+     col    = "#9F79EE")
+```
+
+
+
+Final Grade in Math(G3)- Density
+```{r}
+h <- hist(students_dataset$G3, #sAVE histogram as object
+          breaks = 11,#"Suggest" 11 bins
+          freq = FALSE,
+          col = "thistle1",#Or use:col = colors() [626]
+          main = "Studens grades on Math",
+          xlab = "G3 ")
+          
+
+curve(dnorm(x, mean = mean(students_dataset$G3), sd = sd(students_dataset$G3)),
+      col = "thistle4",
+      lwd = 2,
+      add = TRUE)
+
+
+```
+#BOX PLOT OF FREQUENCIES
+
+```{r}
+#Boxplot with options
+students_dataset %>%
+  select(age) %>%
+  boxplot(
+    horizontal = T, #Horizontal
+    notch = T, #confidence interval for the median 
+    main = "Boxplot of students Age",
+    sub  = "(Source: ggplot2::Students list)",
+    xlab = "Age",
+    col  = "#CD0000"
+    
+  )
+```
+
+```{r}
+#Identify outlier 
+
+students_dataset%>%
+    select(age, absences) %>% 
+  filter(age > 21)%>%  #Select outlier / but this outlier is a true data 
+  print()
+```
+
+
+```{r}
+mathGrades <- students_dataset %>%
+gather(G1, G2, G3 , key="semester", value="grade") %>%
+ggplot() +
+geom_bar(aes(x=grade, fill=semester), position="dodge") +
+ggtitle("Distribution of three grades in Math")
+
+mathGrades
+```
+For all students in math as well as the subset of math students the mean grade slightly decreases as the
+semester progresses.
+
+
+
+
+```{r}
+famMath <- ggplot(students_dataset, aes(x=G3)) +
+geom_density(aes(color=as.factor(famrel))) +
+ggtitle("Distribution of Math students' grades by family relationships")
+
+famMath
+
+```
+
+#relation between the mean of the  final grade in math and Goout  
+```{r}
+students_dataset$goout <- as.factor(students_dataset$goout)
+students_dataset%>%
+group_by(goout)%>%
+summarise(AverageScore= mean(G3,na.rm=TRUE))%>%
+arrange(desc(AverageScore))
+```
+
+
+#BOXPLOTS BY GROUP
+
+Absences in function of health
+```{r}
+#Boxplot by group using boxplot() 
+students_dataset %>%
+  select(absences, health)%>%
+  boxplot(
+    absences ~ health, 
+    data = . , 
+    col = "#CD0000",
+    horizontal = T
+  )
+```
+
+Linear regression 
+```{r}
+reg <- lm(G3~absences,data=students_dataset)
+summary(reg)
+```
+```{r}
+reg <- lm(absences  ~ age + Medu + traveltime + studytime +failures+famrel +freetime +goout+ Dalc + Walc + health + G3 , data = students_dataset)
+
+summary(reg)
+```
+```{r}
+#install.packages("GGally")
+
+ggpairs(df_quantitative)
+```
+t.test
+```{r}
+t.test(students_dataset$G3~students_dataset$sex)
+```
+
+```{r}
+#G3
+ggplot(data=students_dataset)+geom_histogram(mapping = aes(x=G3))
+
+
+```
+
+```{r}
+ggplot(students_dataset,
+       aes(G2,G3,
+          color = sex))+geom_jitter(alpha = .5)
+```
+
+
+```{r}
+#Scatterplot, colored by species ,fit line, 
+ggplot(students_dataset,
+       aes(G2,G3,
+          color = sex))+geom_point(size = 3)+
+  geom_smooth(method = lm)+
+  geom_density2d(alpha = .5)+facet_grid(sex ~ .)
+  theme(legend.position = "bottom")
+
+```
+
+
+
+
+Correlation between grade OF Math in the first class and second class.
+```{r}
+#Bivariate scatterplot with options
+
+df_quantitative %>%
+  select(G1,G2) %>%
+  plot(
+    main = "Scatterplot of Grades of the first class and Second Class", #I'm going to put a title on
+    xlab = "G1" ,#I'm going to put a label, By the way, you have to use the escape                                                 character if you want to include the quotes in your labels
+    ylab = "G2",
+    col = "gray", # Color of points , 
+    pch = 20,     #"Pch = Plotting charachter"(small circle)
+  )
+
+
+#Add fit linear regression line (y ~ x)
+students_dataset %>%  
+  lm(G1 ~ G2, data = .) %>% 
+  abline()  
+```
+
+# Relation between  the access to the internet and student preformance (Inetrnet,G3)
+```{r}
+students_dataset%>%
+group_by(internet)%>%
+ggplot(aes(x=G3, fill=internet))+
+geom_density( alpha=0.5)
+```
+# Relation between health and absences 
+```{r}
+students_dataset%>%
+group_by(sex)%>%
+ggplot(aes(x=factor(health), y=absences, color=sex))+
+geom_smooth(aes(group=sex), method="lm", se=FALSE)
+```
+
+#Average final score for different levels of alcohol consumption on weekends and weekdays
+```{r}
+
+students_dataset %>%
+   group_by(Walc)%>%
+  aggregate(G3~Walc, data=., mean)%>%
+  arrange(desc(G3))
+
+students_dataset%>%
+   group_by(Dalc)%>%
+  aggregate(G3~Dalc, data=., mean)%>%
+  arrange(desc(G3))
+
+```
+# 3-2 - Compute a correlation matrix for some quantitative variables Draw a heat map for this correlation matrix and a scatterplot matrix.
+```{r warning=F}
+
+
+d.quant <- students_dataset %>% select(G3,Walc,Dalc,health,absences,goout)
+
+a <- cor(d.quant, use="complete.obs")
+
+
+
+ggcorrplot(a, hc.order = TRUE , type = "upper", lab = TRUE) + geom_tile()+
+   scale_fill_gradient(low="white", high="blue") +
+   theme_ipsum()+theme(axis.text.x = element_text(angle = 45 , hjust = 1))
+
+
+ggcorrplot(a, hc.order = TRUE ,type = "lower",  lab = TRUE) + geom_tile()+
+  scale_fill_distiller(palette = "RdPu") +
+  theme_ipsum()+theme(axis.text.x = element_text(angle = 45 , hjust = 1))
+
+
+
+ggcorrplot(a, hc.order = TRUE , lab = TRUE) + geom_tile()+
+  scale_fill_viridis(discrete=FALSE) +
+  theme_ipsum()+theme(axis.text.x = element_text(angle = 45 , hjust = 1))
+
+
+
+
+```
+
+```{r}
+#BIVARIATE REGRESSION
+#Compute and save bivariate regression
+fit1 <- lm(students_dataset$G3  ~ students_dataset$age)
+
+fit1 #gives us the inetrcep and the slope
+
+
+#Summarize regression model
+summary(fit1)
+```
+
+```{r warning=-1}
+#Confidence intervales for coefficients
+confint(fit1)
+```
+
+```{r}
+#Predict values of "G3"
+predict(fit1)
+```
+
+```{r}
+#Predict intervals for values of "G3"
+predict(fit1, interval = "prediction")
+```
+#Regression diagnostics
+```{r}
+lm.influence(fit1)
+influence.measures(fit1)
+```
+
+
+```{r}
+#Correlation matrix for data frame
+
+df_quantitative %>%
+  cor() %>%
+  round(2)
+```
+```{r}
+#Can test one pair of variables at a time
+#Gives r, hypothesis , and confidence inetrval
+cor.test(df_quantitative$G3, df_quantitative$health) #it's going to do a whole series of inferential tests, piking just 2 variables 
+```
+```{r}
+data_corr <- students_dataset%>% select(G3, sex,Walc, Dalc)%>%
+  print()
+```
+
+# 3 - Multiple REGRESSION BETWEEN G3 and Other quantitative variables 
+```{r}
+#MULTIPLE REGRESSION
+
+#Moving the outcome to the front can make things easier
+students_dataset <- students_dataset %>%
+  select(G3, everything()) %>%
+  print()
+
+#Three ways to specify model 
+
+#Most concise
+lm(students_dataset)
+```
+
+```{r}
+#Identify outcome, infer rest
+lm(G3 ~ ., data=students_dataset)
+```
+
+```{r}
+# Save model 
+fit2 <- lm(students_dataset)
+fit2
+```
+#Summarize regression model
+```{r}
+summary(fit2)
+```
+
+#Confidence intervals for coefficients
+```{r}
+confint(fit2)
+```
+# Predict values of "G3"
+```{r}
+predict(fit2)
+```
+
+#Prediction intervals for values of "G3"
+```{r}
+predict(fit2 , interval="prediction")
+```
+#Regression diagnostics
+```{r}
+lm.influence(fit2)
+influence.measures(fit2)
+```
+#COMPUTING CONTINGENCY
+
+
+```{r warning=-1}
+#sAVE categorical variables
+df_catego <- import(path) %>%
+  select(school, sex, Fjob, Mjob, paid) %>%
+  print()
+```
+#lets see the relation btw sex and paid - extra paid maths classes
+```{r}
+#Create contingency table
+ct <- table(df_catego$sex, df_catego$paid)
+ct
+```
+
+```{r}
+#Call also get cell, row, and column %
+#With rounding to get just 2 deciaml places
+#Multiplied by 100 to make %
+
+p_load(magrittr)  #To get arithmetic aliases
+
+#Row percentages 
+ct %>%
+  prop.table(1) %>% #1 is for row perdentages 
+  round(2) %>%
+  multiply_by(100)
+```
+
+```{r}
+#Column percentages
+ct %>% 
+  prop.table(2) %>%  # 2 is for columns percentages
+  round(2) %>%
+  multiply_by(100)
+```
+```{r}
+#Total percentages 
+ct %>% 
+  prop.table() %>% #No arguments for total percentages
+  round(2) %>%
+  multiply_by(100)
+```
+```{r}
+#Chi-squared testj 
+
+tchi <- chisq.test(ct)
+tchi
+
+corrplot(chisq$residuals, is.cor = FALSE)
+```
+```{r}
+#Additional tables
+tchi$observed #Obsered frequencies (same as ct)
+tchi$exepcted #Expected frequencies
+tchi$residuals #Pearson's residual
+tchi$stdres    #Standardized residual
+```
+
+
+# 4 Study of relationships between categorical and quantitative variables.
+
+# 4-1 Represent associations between quantitative variables and categorical variables (Boxplots, Bar charts for means, Stacked bar charts, Multiple histograms, etc.). 
+
+```{r}
+mathGrades2 <- ggplot(students_dataset) +
+geom_bar(aes(x=school, fill=as.factor(G3)), position="dodge") +
+ggtitle("Distribution of Math grades by school") +
+theme(legend.position = "none")
+
+mathGrades2
+```
+
+```{r}
+#Visualizing the students data set using ggplot 
+ggplot(data=students_dataset, mapping=aes(x=sex, y=absences))+geom_point(mapping=aes(color=health))  #scatter plot
+ggplot(data=students_dataset, mapping=aes(x=health, y=absences))+geom_line()  #line chart
+ggplot(data=students_dataset, mapping=aes(x=absences, y=sex))+geom_line(mapping=aes(color=health)) # line chart with sex colors 
+```
+
+# Relation between final garde in math and Final result grouped by the gender
+```{r}
+
+( finalResult_by_sex<-students_dataset%>%
+    mutate(pass=ifelse(G3>=10,1,0), fail= ifelse(G3<10,1,0))%>%
+    filter(sex=="F"|sex=="M")%>%
+    group_by(sex)%>%
+    summarise(Pass=sum(pass),
+              Fail=sum(fail)))
+  
+```
+
+```{r}
+fjob_G3 <- ggplot(students_dataset, aes(x=G3)) +
+geom_density(aes(color=as.factor(Fjob))) +
+ggtitle("Distribution of Math students' final grades by fathers' job")
+
+Mjob_G3 <- ggplot(students_dataset, aes(x=G3)) + 
+geom_density(aes(color=as.factor(Mjob))) +
+ggtitle("Distribution of Math students' final grades by Mothers' job")
+
+
+grid.arrange(fjob_G3, Mjob_G3)
+```
+
+```{r}
+students_dataset %>% 
+	ggplot(aes(x = absences,
+		   y = sex,
+		   fill = sex))+
+	geom_boxplot()+coord_flip()+
+	xlab("")+
+	theme(legend.position = "none")
+```
+
+
+# Relationship between student's health and abscenses
+```{r}
+
+students_health <- students_dataset %>% 
+  mutate(health = as.factor(health),health_status = recode(health,
+                "1" ="very bad",
+                "2" = "bad",
+                "3" = "neutral",
+                "4"=  "good",
+                "5"=  "very good")) %>% 
+  select(absences,health, health_status) 
+
+
+
+students_health %>%
+  	ggplot(aes(x = health_status,
+		   y = absences,
+		   fill = health_status))+
+	geom_boxplot()+coord_flip()+
+	xlab("")+theme(legend.position = "none")
+	
+
+```
+```{r}
+#Separate plots by group
+#absences & health_status
+students_health %>% ggplot(aes(x = absences, fill = health_status))+geom_histogram()+
+facet_grid(health_status ~ .) +
+	theme(legend.position = "none")
+
+
+```
+#Density plots
+Final grade in math (G3) & The reaosn of choosing the school (reason)
+```{r}
+students_dataset %>% ggplot(aes(x = G3, fill = reason))+geom_density(alpha=.5)+facet_grid(reason ~ .)
+theme(legend.position = "none")
+```
+Relation between final grade in math ,consumption of alcohol and the address 
+```{r}
+Grades_Dalc<-students_dataset %>%group_by(address)%>%ggplot(aes(x=factor(Dalc), y= G3))+geom_jitter(alpha=0.6)+scale_x_discrete("Dalc")+scale_y_continuous("G3")+facet_grid(~address) 
+
+Grades_Walc<-students_dataset %>%group_by(address)%>%ggplot(aes(x=factor(Walc), y= G3))+geom_jitter(alpha=0.6)+scale_x_discrete("Walc")+scale_y_continuous("G3")+facet_grid(~address)
+
+
+grid.arrange(Grades_Dalc,Grades_Walc,ncol=2)
+```
+
+#4- 2 Perform t-tests to compare pairwise the mean of some quantitative variables depending on the two levels of some binary categorical variables.
+```{r}
+# Pairwise comparisons
+test_students <- students_dataset%>%
+  pairwise_t_test (
+  G3 ~ sex  , pool.sd= T,
+  p.adjust.method = "bonferroni",
+  alternative = c("two.sided", "less", "greater"),
+  
+)
+
+
+```
+
+```{r}
+stat.test <- students_dataset %>%
+  group_by(.) %>%
+  t_test(G3 ~ address, p.adjust.method = "bonferroni")
+
+stat.test
+```
+
+# Create the plot
+```{r}
+
+myplot <- ggboxplot(
+  students_dataset, x = "address", y = "G3",
+  fill = "address", palette = "npg", legend = "none",
+  ggtheme = theme_pubr(border = TRUE)
+  ) +
+  facet_wrap(~.)
+# Add statistical test p-values
+stat.test <- stat.test %>% add_xy_position(x = "address")
+myplot + stat_pvalue_manual(stat.test)
+```
+
+# 4-3 Perform ANOVA to compare the mean of some quantitative variables depending on the levels of some non binary categorical variables.
+
+```{r}
+boxplot( G3 ~ school * reason , data = students_dataset) 
+```
+
+Analayse of variance 
+```{r}
+aov1 <- aov(G3 ~ Mjob*Fjob, data = students_dataset)
+summary(aov1)
+```
+
+
+```{r}
+#table effects 
+model.tables(aov1)
+
+```
+
+give tables of the mean response for each combinations of levels of the factors in a term
+```{r}
+
+model.tables(aov1, "means" )
+
+```
+```{r}
+# Post-hoc test or after the fact test to see which of these differences are statistically significant among the different conditions.
+TukeyHSD(aov1)
+```
+
+# 5 - CLUSTERING 
+
+# 5-1 Perform a k-means clustering algorithm with some quantitative variables. Determine the optimal number of clusters. Study the final result and the academic grade of students in each cluster.
+
+
+```{r}
+#step 1 kmean and scaling 
+
+
+quantitative <- students_dataset[ c("G1","G2","G3","Walc","Dalc","absences","health")]
+
+result_kmean <- kmeans(scale(quantitative), 3, nstart = 25)
+result_kmean$cluster
+
+
+```
+
+
+```{r}
+#step 2 
+fviz_cluster(result_kmean, data = quantitative ,
+             palette = c("#CD1076", "#66CD00", "#FF7F24"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+             )
+```
+
+Compute PCA and extract individual coordinates
+Etude sur le variable Final result 
+```{r}
+# Dimension reduction using PCA
+
+res.pca <- prcomp(quantitative,  scale = TRUE)
+
+# Coordinates of individuals
+ind.coord <- as.data.frame(get_pca_ind(res.pca)$coord)
+
+# Add clusters obtained using the K-means algorithm
+ind.coord$cluster <- factor(result_kmean$cluster)
+
+# Add FinalResult groups from the original data sett
+ind.coord$FinalResult <- students_dataset_finalresult$finalResult
+# Data inspection
+head(ind.coord)
+```
+
+```{r}
+# Percentage of variance explained by dimensions
+eigenvalue <- round(get_eigenvalue(res.pca), 1)
+variance.percent <- eigenvalue$variance.percent
+head(eigenvalue)
+```
+#Cluster visualization : Study of  the final result in the cluster
+```{r}
+ggscatter(
+  ind.coord, x = "Dim.1", y = "Dim.2", 
+  color = "cluster", palette = "npg", ellipse = TRUE, ellipse.type = "convex",
+  shape = "FinalResult", size = 1.5,  legend = "right", ggtheme = theme_bw(),
+  xlab = paste0("Dim 1 (", variance.percent[1], "% )" ),
+  ylab = paste0("Dim 2 (", variance.percent[2], "% )" )
+) +
+  stat_mean(aes(color = cluster), size = 4)
+```
+Etude sur le variable Academic Grade 
+```{r}
+
+
+res.pca <- prcomp(quantitative,  scale = TRUE)
+# Coordinates of individuals
+ind.coord <- as.data.frame(get_pca_ind(res.pca)$coord)
+# Add clusters obtained using the K-means algorithm
+ind.coord$cluster <- factor(result_kmean$cluster)
+# Add AcademicGrade groups from the original data sett
+ind.coord$AcademicGrade <- students_dataset_academic_Grade$academicGrade
+# Data inspection
+head(ind.coord)
+```
+
+
+
+```{r}
+# Percentage of variance explained by dimensions
+eigenvalue <- round(get_eigenvalue(res.pca), 1)
+variance.percent <- eigenvalue$variance.percent
+head(eigenvalue)
+```
+#Cluster visualization : Study of  the Academic Grade variable  in the cluster
+```{r}
+ggscatter(
+  ind.coord, x = "Dim.1", y = "Dim.2", 
+  color = "cluster", palette = "npg", ellipse = TRUE, ellipse.type = "convex",
+  shape = "AcademicGrade", size = 1.5,  legend = "right", ggtheme = theme_bw(),
+  xlab = paste0("Dim 1 (", variance.percent[1], "% )" ),
+  ylab = paste0("Dim 2 (", variance.percent[2], "% )" )
+) +
+  stat_mean(aes(color = cluster), size = 4)
+```
+
+# 5-2 hierarchical clustering algorithm.
+ * start separate and combine *
+```{r warning=-1}
+quantitative_clust <- students_dataset_academic_Grade[c("G1","G2","G3","Walc","Dalc","absences","health")]
+
+d <- dist(quantitative_clust, method = "euclidean") 
+hc1 <- hclust(d, method = "average" )
+```
+
+
+```{r}
+(cut_avg <- cutree(hc1, k = 3))
+```
+
+Agglomerative Hierarchical Clustering
+```{r warning=-1}
+plot(hc1, cex = 0.6, hang = -1)
+
+rect.hclust(hc1 , k = 3, border = 2:6)
+abline(h = 3, col = 'red')
+```
+
+```{r}
+library(dendextend)
+avg_dend_obj <- as.dendrogram(hc1)
+avg_col_dend <- color_branches(avg_dend_obj, h = 3)
+plot(avg_col_dend)
+```
+
+
+```{r}
+clusterCut <- cutree(clusters, 3)
+table(clusterCut, students_dataset_academic_Grade$finalResult)
+```
+```{r}
+clusterCut <- cutree(clusters, 3)
+table(clusterCut, students_dataset_academic_Grade$academicGrade)
+```
+
+```{r}
+ggplot(students_dataset_academic_Grade, aes(G3, G2, color = students_dataset_academic_Grade$finalResult)) + 
+  geom_point(alpha = 0.4, size = 3.5) + geom_point(col = clusterCut) + 
+  scale_color_manual(values = c('black', 'red', 'green'))
+```
+_______________ CONCLUSION ___________________
+
+Nous constatons que certaines variables sont fortement corrélées avec d'autres et n'ont donc pas d'impact significatif sur la prédiction des notes finales. Différentes interprétations tabulaires et visuelles ont été faites pour analyser la relation entre les différentes variables pour prédire ou influencer la note d'un élève.
+
+1-Selon le sexe : Nous constatons que plus d'étudiantes ont tendance à échouer à l'examen final par rapport aux étudiants de sexe masculin, mais le sexe ne semble pas avoir autant de corrélation pour prédire les notes que la consommation d'alcool. Nous constatons également que le taux de fréquentation des étudiantes est inférieur à celui des étudiants de sexe masculin et que les étudiants de sexe masculin ayant un plan d'enseignement supérieur surpassent les étudiantes.
+
+2-Consommation d'alcool : Nous constatons un impact négatif clair sur les notes en raison de la consommation d'alcool le week-end mais une tendance claire ne peut être établie pour les jours de la semaine. La consommation d'alcool augmente également en milieu urbain par rapport aux milieux ruraux.
+
+3- Objectifs de l'élève: Nous constatons qu'en moyenne, les étudiants qui envisagent de poursuivre des études supérieures obtiennent de meilleurs résultats que ceux qui n'en ont pas.
+
+4- Santé et présence en classe : Comme prévu, à mesure que l'état de santé se détériore, nous constatons que le nombre d'absences augmente.
+
+5- Accès à Internet : L'accès à Internet a un effet dissuasif sur les performances des élèves car leurs notes moyennes sont inférieures à celles de ceux qui n'ont pas accès à Internet.
+
+
+Nous constatons que les variables qui influent réellement sur la prédiction des notes finales sont les absences, l'emploi des pères et les notes aux examens 1 et 2, et l'absence la consomation de l'alcohol  comme on le trouve dans l'algorithme kmeans.
+
+
+
